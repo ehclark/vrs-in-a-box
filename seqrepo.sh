@@ -41,16 +41,24 @@ seqrepo -r seqrepo --root-directory $SEQREPO_ROOT $RSYNC_OPTION add-assembly-nam
 echo "Process completed successfully."
 
 # Insert data into SQLite database a WILD HACK to workaround vrs-annotate issue
-echo "Inserting data into seqalias table..."
+echo "Inserting hack data into seqalias table..."
+SEQ_ID=$(sqlite3 $SEQREPO_ROOT/master/aliases.sqlite3 "SELECT seq_id FROM seqalias LIMIT 1;")
+
+if [ -z "$SEQ_ID" ]; then
+    echo "Error: Could not retrieve seq_id from aliases database."
+    exit 1
+fi
+
+echo "Inserting data into seqalias table with seq_id=$SEQ_ID..."
 sqlite3 $SEQREPO_ROOT/master/aliases.sqlite3 <<EOF
 INSERT INTO seqalias (seq_id, namespace, alias, added, is_current)
-VALUES (1, 'GRCh38', 'MT', CURRENT_TIMESTAMP, 1);
+VALUES ("$SEQ_ID", 'GRCh38', '1', CURRENT_TIMESTAMP, 1);
 EOF
 
-echo "Data inserted successfully."
+echo "Hack data inserted successfully."
 
 # Create a tar.gz archive of the seqrepo directory
 echo "Archiving seqrepo directory..."
-tar -czf "${ASSEMBLY_NAME}-seqrepo.tar.gz" -C "$(pwd)" seqrepo
+tar -czvf "${ASSEMBLY_NAME}-seqrepo.tar.gz" seqrepo-${ASSEMBLY_NAME}
 
 echo "Archive created: ${ASSEMBLY_NAME}-seqrepo.tar.gz"
