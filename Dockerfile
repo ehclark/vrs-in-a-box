@@ -1,8 +1,8 @@
 # Builder image
 FROM python:3.12-slim AS build
 
-# Either 'grch38' or 'grch37'
-ARG ASSEMBLY="grch38"
+# Either 'GRCh38' or 'GRCh37'
+ARG ASSEMBLY="GRCh38"
 
 # Install packages needed for the build
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
@@ -28,12 +28,13 @@ RUN /vrs-python/venv/bin/python3 -m pip install -U setuptools
 RUN /vrs-python/venv/bin/python3 -m pip install 'ga4gh.vrs[extras]'
 
 # Download and unpack seqrepo files
-RUN curl -o /seqrepo-${ASSEMBLY}.zip -L https://github.com/ehclark/vrs-in-a-box/releases/download/seqrepofiles/seqrepo-${ASSEMBLY}.zip
+RUN curl -L -o /seqrepo-${ASSEMBLY}.zip https://github.com/ehclark/vrs-in-a-box/releases/download/seqrepofiles/seqrepo-${ASSEMBLY}.zip
 RUN unzip /seqrepo-${ASSEMBLY}.zip -d /
 
 # Final image
 FROM python:3.12-slim AS vrs-python
 ARG ASSEMBLY
+ENV ASSEMBLY=${ASSEMBLY}
 
 # Install runtime required packages
 RUN apt-get update && apt-get install -y libpq-dev
@@ -42,6 +43,9 @@ RUN apt-get update && apt-get install -y libpq-dev
 COPY --from=build /vrs-python /vrs-python
 COPY --from=build /seqrepo-${ASSEMBLY} /seqrepo-${ASSEMBLY}
 
+# Copy over run script
+COPY ./run.sh /run.sh
+
 # Set environment variables
 ENV GA4GH_VRS_DATAPROXY_URI="seqrepo+file:///seqrepo-${ASSEMBLY}/master"
 ENV VIRTUAL_ENV=/vrs-python/venv
@@ -49,4 +53,4 @@ ENV PATH=/vrs-python/venv/bin:$PATH
 
 WORKDIR /
 
-ENTRYPOINT [ "/vrs-python/venv/bin/vrs-annotate", "vcf" ]
+ENTRYPOINT [ "/run.sh" ]

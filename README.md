@@ -13,11 +13,38 @@ seqrepo -r seqrepo init
 seqrepo -r seqrepo load -n NCBI GCF_000001405.26_GRCh38_genomic.fna.gz 
 seqrepo -r seqrepo add-assembly-names
 ```
+
+How to build a GRCh37 assembly only version of seqrepo:
+```shell
+git clone https://github.com/biocommons/biocommons.seqrepo
+cd biocommons.seqrepo
+make devready
+source venv/bin/activate
+curl -O https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.13_GRCh37/GCF_000001405.13_GRCh37_genomic.fna.gz
+seqrepo -r seqrepo init
+seqrepo -r seqrepo load -n NCBI GCF_000001405.13_GRCh37_genomic.fna.gz
+seqrepo -r seqrepo add-assembly-names
+sqlite3 seqrepomaster/aliases.sqlite3
+sqlite> insert into seqalias (seq_id, namespace, alias, added, is_current) values ('Ya6Rs7DHhDeg7YaOSg1EoNi3U_nQ9SvO', 'GRCh38', '1', DATE('now'), 1);
+sqlite> .exit
+sqlite3 seqrepo/master/sequences/db.sqlite3
+sqlite> insert into seqinfo (seq_id, len, alpha, added, relpath) values ('Ya6Rs7DHhDeg7YaOSg1EoNi3U_nQ9SvO', 248956422, 'ACGMNRT', date('now'), '2025/0331/1411/1743430287.165611.fa.bgz');
+sqlite> .exit
+```
 NOTE: On MacOS you may need to use the `--rsync-exe` option to specify a compatible rsync version install with Homebrew.
+
+NOTE: The post-build seqrepo database modifications for GRCh37 are to workaround a check in the VCF annotate tool that
+assumes that GRCh38 assembly is present in seqrepo.
+
 
 Build the image for GRCh38:
 ```shell
-docker build --build-arg ASSEMBLY=grch38 -t vrs-vcf-annotator-grch38:latest .
+docker build --build-arg ASSEMBLY=GRCh38 -t vrs-vcf-annotator-grch38:latest .
+```
+
+Build the image for GRCh37:
+```shell
+docker build --build-arg ASSEMBLY=GRCh37 -t vrs-vcf-annotator-grch38:latest .
 ```
 
 Run the image to annotate the VCF file `NA12878.vcf` in the current directory:
